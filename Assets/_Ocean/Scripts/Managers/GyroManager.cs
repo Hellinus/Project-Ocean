@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using MoreMountains.Tools;
@@ -10,8 +11,7 @@ namespace _Ocean.Scripts.Managers
     {
         public bool HasGyroscope => SystemInfo.supportsGyroscope;
         
-        protected Vector3 BaseEulerAngles = Vector3.zero;
-        protected Vector3 BaseRotationRate = Vector3.zero;
+        protected Vector3 _baseEulerAngles = Vector3.zero;
         protected bool _gyroInitialized = false;
 
         public Quaternion GetCurrentAttitude()
@@ -39,7 +39,9 @@ namespace _Ocean.Scripts.Managers
         
         public Vector3 GetCurrentProcessedEulerAngles()
         {
-            return HasGyroscope? GetCurrentUnityEulerAngles() - BaseEulerAngles : Vector3.zero;
+            Vector3 temp = GetCurrentUnityEulerAngles();
+            return HasGyroscope? new Vector3(temp.x - _baseEulerAngles.x, temp.y - _baseEulerAngles.y, temp.z - _baseEulerAngles.z)
+                : Vector3.zero;
         }
 
         public Vector3 GetCurrentUnityRotationRate()
@@ -54,11 +56,6 @@ namespace _Ocean.Scripts.Managers
             
             return HasGyroscope ? v : Vector3.zero;
         }
-        
-        public Vector3 GetCurrentProcessedRotationRate()
-        {
-            return HasGyroscope? GetCurrentUnityRotationRate() - BaseRotationRate : Vector3.zero;
-        }
 
         public void SetCurrentBaseEulerAngles()
         {
@@ -68,20 +65,8 @@ namespace _Ocean.Scripts.Managers
             }
 
             if (!HasGyroscope) return;
-
-            BaseEulerAngles = GetCurrentUnityEulerAngles();
-        }
-        
-        public void SetCurrentBaseRotationRate()
-        {
-            if (!_gyroInitialized)
-            {
-                InitGyro();
-            }
-
-            if (!HasGyroscope) return;
-
-            BaseRotationRate = GetCurrentUnityRotationRate();
+            
+            _baseEulerAngles = GetCurrentUnityEulerAngles();
         }
         
         protected void InitGyro()

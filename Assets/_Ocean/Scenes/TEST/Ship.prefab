@@ -315,6 +315,10 @@ MonoBehaviour:
   MoveSpeed: 10
   MovementInertia: 5
   ConstrainMovementToDeathBounds: 1
+  XRotationLimit: 30
+  YRotationLimit: 30
+  ZRotationLimit: 50
+  ReturnTime: 2
 --- !u!1 &6988010124511639897
 GameObject:
   m_ObjectHideFlags: 0
