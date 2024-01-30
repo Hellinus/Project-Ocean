@@ -1,5 +1,9 @@
-using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+using _Ocean.Scripts.Managers;
+using MoreMountains.Tools;
 using MoreMountains.InfiniteRunnerEngine;
+using UnityEngine;
 
 namespace _Ocean.Scripts.Player
 {
@@ -46,20 +50,19 @@ namespace _Ocean.Scripts.Player
         /// </summary>
         protected virtual void MoveCharacter()
         {
-            var rot = Vector3.zero;
-            // rot.z = -Input.gyro.rotationRateUnbiased.y;
-            // rot.z = -Input.gyro.attitude.y;
-            // transform.Rotate(rot);
-            // Quaternion de = new Quaternion(0.5f, 0.5f, -0.5f, 0.5f) * Input.gyro.attitude * new Quaternion(0, 0, 1, 0);
-            // transform.rotation = de;
-            Vector3 a = Input.gyro.attitude.eulerAngles;
-            a = new Vector3(-a.x, -a.z, -a.y); //正确的方向转换
+            Vector3 a = GyroManager.Instance.GetCurrentProcessedEulerAngles();
             this.transform.eulerAngles = a;
-            // this.transform.Rotate(Vector3.right * 90, Space.World);
-            Debug.Log(Input.gyro.attitude);
+            
+            // Vector3 a = GyroManager.Instance.GetCurrentProcessedRotationRate();
+            // this.transform.Rotate(a);
         }
 
-        
+        public override void MainActionStart()
+        {
+            base.MainActionStart();
+            GyroManager.Instance.SetCurrentBaseEulerAngles();
+            GyroManager.Instance.SetCurrentBaseRotationRate();
+        }
     }
 }
 
