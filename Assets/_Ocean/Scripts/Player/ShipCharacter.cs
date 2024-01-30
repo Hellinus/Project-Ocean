@@ -11,15 +11,18 @@ namespace _Ocean.Scripts.Player
     {
         [Header("Movement")]
         /// the character's movement speed
-        public float MoveSpeed=5f;
+        public float MoveSpeed = 2f;
         /// the movement inertia (the higher it is, the longer it takes for it to stop / change direction
-        public float MovementInertia;
+        public float MovementInertia = 1f;
         /// if true, the character will stop before reaching the level's death bounds
         public bool ConstrainMovementToDeathBounds=true;
 
         [Header("Rotation")]
+        [Range(0f, 120f)]
         public float XRotationLimit = 30f;
+        [Range(0f, 120f)]
         public float YRotationLimit = 30f;
+        [Range(0f, 120f)]
         public float ZRotationLimit = 30f;
         public float ReturnTime = 2f;
         
@@ -27,6 +30,11 @@ namespace _Ocean.Scripts.Player
         protected float _maxBound_x;
         protected float _minBound_z;
         protected float _maxBound_z;
+        protected Vector3 _newPosition = Vector3.zero;
+        protected Vector3 _movement = Vector3.zero;
+        protected Vector3 _currentMovement = Vector3.zero;
+        
+        
         protected float _boundsSecurity = 10f;
         protected bool _isReturning = false;
         protected float _curTime = 0f;
@@ -69,6 +77,7 @@ namespace _Ocean.Scripts.Player
             _maxRotation_z = ZRotationLimit;
             _maxRotationBound_z = _maxRotation_z + 60;
 
+            GyroManager.Instance.SetCurrentBaseEulerAngles();
         }
         
         /// <summary>
@@ -88,11 +97,28 @@ namespace _Ocean.Scripts.Player
         {
             if (_isReturning)
             {
-                
+                _movement = new Vector3(0, 0, 0);
+                _currentMovement = new Vector3(0, 0, 0);
+                _newPosition = new Vector3(0, 0, 0);
             }
             else
             {
+                Vector3 v = GyroManager.Instance.GetInspectorRotationValueMethod(this.transform);
+                Debug.Log(v);
                 
+                _movement = new Vector3(-v.z, 0, v.x);
+                Debug.Log("movement:" + _movement);
+                _currentMovement = Vector3.Lerp(_currentMovement,_movement,Time.deltaTime * 1/MovementInertia);
+                _newPosition = transform.position + _currentMovement * MoveSpeed;
+                _newPosition = Vector3.Lerp(transform.position, _newPosition, Time.deltaTime);
+                if (ConstrainMovementToDeathBounds)
+                {
+                    _newPosition.x = Mathf.Clamp(_newPosition.x,_minBound_x,_maxBound_x);
+                    _newPosition.z = Mathf.Clamp(_newPosition.z,_minBound_z,_maxBound_z);
+                }
+                
+                transform.position = _newPosition;
+
             }
         }
 
@@ -104,7 +130,7 @@ namespace _Ocean.Scripts.Player
             if (_isReturning)
             {
                 GyroManager.Instance.SetCurrentBaseEulerAngles();
-                this.transform.eulerAngles = MMTween.Tween(_curTime, 0f, ReturnTime, 
+                transform.eulerAngles = MMTween.Tween(_curTime, 0f, ReturnTime, 
                     _preEulerAngles, GyroManager.Instance.GetCurrentProcessedEulerAngles(),
                     MMTween.MMTweenCurve.EaseInOutQuadratic);
                 _curTime += Time.deltaTime;
@@ -117,7 +143,7 @@ namespace _Ocean.Scripts.Player
             }
             else
             {
-                Vector3 eulerAngles = this.transform.eulerAngles;
+                Vector3 eulerAngles = transform.eulerAngles;
                 Vector3 v = GyroManager.Instance.GetCurrentUnityRotationRate();
                 if (((eulerAngles.x <= _minRotation_x && eulerAngles.x > _minRotationBound_x) && v.x < 0)
                     || ((eulerAngles.x >= _maxRotation_x && eulerAngles.x < _maxRotationBound_x) && v.x > 0))
@@ -135,7 +161,7 @@ namespace _Ocean.Scripts.Player
                     v.z = 0;
                 }
                 
-                this.transform.Rotate(v);
+                transform.Rotate(v);
             }
         }
         
