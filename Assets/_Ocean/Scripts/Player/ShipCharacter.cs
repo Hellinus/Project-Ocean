@@ -16,8 +16,15 @@ namespace _Ocean.Scripts.Player
         public float MovementInertia = 1f;
         /// if true, the character will stop before reaching the level's death bounds
         public bool ConstrainMovementToDeathBounds=true;
+        [Range(0f, 120f)]
+        public float XMovementLimit = 10f;
+        [Range(0f, 120f)]
+        public float YMovementLimit = 10f;
+        [Range(0f, 120f)]
+        public float ZMovementLimit = 10f;
 
         [Header("Rotation")]
+        public float RotateInertia = 1f;
         [Range(0f, 120f)]
         public float XRotationLimit = 30f;
         [Range(0f, 120f)]
@@ -38,7 +45,8 @@ namespace _Ocean.Scripts.Player
         protected float _boundsSecurity = 10f;
         protected bool _isReturning = false;
         protected float _curTime = 0f;
-        protected Vector3 _preEulerAngles;
+        protected Vector3 _preEulerAngles = Vector3.zero;
+        protected Vector3 _currentRotationRate = Vector3.zero;
         protected float _minRotation_x;
         protected float _minRotationBound_x;
         protected float _maxRotation_x;
@@ -104,7 +112,16 @@ namespace _Ocean.Scripts.Player
             else
             {
                 Vector3 v = GyroManager.Instance.GetInspectorRotationValueMethod(this.transform);
-                Debug.Log(v);
+
+                if (v.x < -XMovementLimit) v.x = -XMovementLimit;
+                if (v.x > XMovementLimit) v.x = XMovementLimit;
+                // if (v.y < -YMovementLimit) v.y = -YMovementLimit;
+                // if (v.y > YMovementLimit) v.y = YMovementLimit;
+                if (v.z < -ZMovementLimit) v.z = -ZMovementLimit;
+                if (v.z > ZMovementLimit) v.z = ZMovementLimit;
+                if (Mathf.Abs(v.x) is > -1 and < 1) v.x = 0;
+                // if (Mathf.Abs(v.y) is > -1 and < 1) v.y = 0;
+                if (Mathf.Abs(v.z) is > -1 and < 1) v.z = 0;
                 
                 _movement = new Vector3(-v.z, 0, v.x);
                 Debug.Log("movement:" + _movement);
@@ -139,6 +156,7 @@ namespace _Ocean.Scripts.Player
                 {
                     _isReturning = false;
                     _curTime = 0f;
+                    _currentRotationRate = Vector3.zero;
                 }
             }
             else
@@ -160,8 +178,9 @@ namespace _Ocean.Scripts.Player
                 {
                     v.z = 0;
                 }
-                
-                transform.Rotate(v);
+
+                _currentRotationRate = Vector3.Lerp(_currentRotationRate, v, Time.deltaTime * 1/RotateInertia);
+                transform.Rotate(_currentRotationRate);
             }
         }
         
