@@ -319,10 +319,10 @@ MonoBehaviour:
   YMovementLimit: 10
   ZMovementLimit: 10
   RotateInertia: 0.1
+  ReturnTime: 1.5
   XRotationLimit: 30
   YRotationLimit: 30
   ZRotationLimit: 30
-  ReturnTime: 2
 --- !u!1 &6988010124511639897
 GameObject:
   m_ObjectHideFlags: 0

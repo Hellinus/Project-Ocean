@@ -24,15 +24,18 @@ namespace _Ocean.Scripts.Player
         public float ZMovementLimit = 10f;
 
         [Header("Rotation")]
-        public float RotateInertia = 1f;
+        public float RotateInertia = 0.1f;
+        public float ReturnTime = 1.5f;
+        public float ReturnCoolDownTime = 2f;
         [Range(0f, 120f)]
         public float XRotationLimit = 30f;
         [Range(0f, 120f)]
         public float YRotationLimit = 30f;
         [Range(0f, 120f)]
         public float ZRotationLimit = 30f;
-        public float ReturnTime = 2f;
+
         
+        protected float _boundsSecurity = 10f;
         protected float _minBound_x;
         protected float _maxBound_x;
         protected float _minBound_z;
@@ -41,12 +44,13 @@ namespace _Ocean.Scripts.Player
         protected Vector3 _movement = Vector3.zero;
         protected Vector3 _currentMovement = Vector3.zero;
         
-        
-        protected float _boundsSecurity = 10f;
+
         protected bool _isReturning = false;
         protected float _curTime = 0f;
         protected Vector3 _preEulerAngles = Vector3.zero;
         protected Vector3 _currentRotationRate = Vector3.zero;
+        protected float _curReturnCoolDownTime = 0f;
+        protected bool _canReturn = false;
         protected float _minRotation_x;
         protected float _minRotationBound_x;
         protected float _maxRotation_x;
@@ -152,11 +156,13 @@ namespace _Ocean.Scripts.Player
                     MMTween.MMTweenCurve.EaseInOutQuadratic);
                 _curTime += Time.deltaTime;
 
+                // return finish
                 if (_curTime >= ReturnTime)
                 {
                     _isReturning = false;
                     _curTime = 0f;
                     _currentRotationRate = Vector3.zero;
+                    _curReturnCoolDownTime = 0f; // reset timer
                 }
             }
             else
@@ -181,16 +187,30 @@ namespace _Ocean.Scripts.Player
 
                 _currentRotationRate = Vector3.Lerp(_currentRotationRate, v, Time.deltaTime * 1/RotateInertia);
                 transform.Rotate(_currentRotationRate);
+                
+                if (_curReturnCoolDownTime >= ReturnCoolDownTime)
+                {
+                    _canReturn = true;
+                }
+                else
+                {
+                    _curReturnCoolDownTime += Time.deltaTime;
+                }
             }
+            
+            Debug.Log(_curReturnCoolDownTime);
+            Debug.Log(_canReturn);
         }
         
         public override void MainActionStart()
         {
             base.MainActionStart();
             if(_isReturning) return;
+            if (!_canReturn) return;
 
             _preEulerAngles = this.transform.eulerAngles;
             _isReturning = true;
+            _canReturn = false;
         }
     }
 }
