@@ -128,7 +128,7 @@ namespace _Ocean.Scripts.Player
                 if (Mathf.Abs(v.z) is > -1 and < 1) v.z = 0;
                 
                 _movement = new Vector3(-v.z, 0, v.x);
-                Debug.Log("movement:" + _movement);
+                // Debug.Log("movement:" + _movement);
                 _currentMovement = Vector3.Lerp(_currentMovement,_movement,Time.deltaTime * 1/MovementInertia);
                 _newPosition = transform.position + _currentMovement * MoveSpeed;
                 _newPosition = Vector3.Lerp(transform.position, _newPosition, Time.deltaTime);
@@ -197,9 +197,6 @@ namespace _Ocean.Scripts.Player
                     _curReturnCoolDownTime += Time.deltaTime;
                 }
             }
-            
-            Debug.Log(_curReturnCoolDownTime);
-            Debug.Log(_canReturn);
         }
         
         public override void MainActionStart()
