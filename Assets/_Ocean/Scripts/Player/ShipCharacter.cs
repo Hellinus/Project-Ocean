@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using _Ocean.Scripts.Managers;
 using MoreMountains.Tools;
 using MoreMountains.InfiniteRunnerEngine;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace _Ocean.Scripts.Player
 {
@@ -11,11 +13,10 @@ namespace _Ocean.Scripts.Player
     {
         [Header("Movement")]
         /// the character's movement speed
-        public float MoveSpeed = 2f;
+        public float MaxSpeed = 30f;
+        public float MoveForce = 2f;
         /// the movement inertia (the higher it is, the longer it takes for it to stop / change direction
-        public float MovementInertia = 1f;
-        /// if true, the character will stop before reaching the level's death bounds
-        public bool ConstrainMovementToDeathBounds=true;
+        public float MovementDrag = 1f;
         [Range(0f, 120f)]
         public float XMovementLimit = 10f;
         [Range(0f, 120f)]
@@ -35,14 +36,8 @@ namespace _Ocean.Scripts.Player
         public float ZRotationLimit = 30f;
 
         
-        protected float _boundsSecurity = 10f;
-        protected float _minBound_x;
-        protected float _maxBound_x;
-        protected float _minBound_z;
-        protected float _maxBound_z;
-        protected Vector3 _newPosition = Vector3.zero;
-        protected Vector3 _movement = Vector3.zero;
-        protected Vector3 _currentMovement = Vector3.zero;
+        protected Vector3 _direction = Vector3.zero;
+        protected Rigidbody _rigidbody;
         
 
         protected bool _isReturning = false;
@@ -71,11 +66,14 @@ namespace _Ocean.Scripts.Player
         protected override void Start()
         {
             base.Start();
-            _minBound_x = LevelManager.Instance.transform.position.x + LevelManager.Instance.DeathBounds.center.x - LevelManager.Instance.DeathBounds.extents.x + _boundsSecurity;
-            _maxBound_x = LevelManager.Instance.transform.position.x + LevelManager.Instance.DeathBounds.center.x + LevelManager.Instance.DeathBounds.extents.x - _boundsSecurity;
-            _minBound_z = LevelManager.Instance.transform.position.z + LevelManager.Instance.DeathBounds.center.z - LevelManager.Instance.DeathBounds.extents.z + _boundsSecurity;
-            _maxBound_z = LevelManager.Instance.transform.position.z + LevelManager.Instance.DeathBounds.center.z + LevelManager.Instance.DeathBounds.extents.z - _boundsSecurity;
+            _rigidbody = GetComponent<Rigidbody>();
+            if (_rigidbody == null)
+            {
+                Debug.LogError("Need Rigidbody.");
+            }
 
+            _rigidbody.drag = MovementDrag;
+            
             _minRotation_x = 360 - XRotationLimit;
             _minRotationBound_x = _minRotation_x - 60;
             _maxRotation_x = XRotationLimit;
@@ -90,6 +88,79 @@ namespace _Ocean.Scripts.Player
             _maxRotationBound_z = _maxRotation_z + 60;
 
             GyroManager.Instance.SetCurrentBaseEulerAngles();
+
+            AilityInitiate();
+        }
+
+        protected void AilityInitiate()
+        {
+            
+            if (MaxAbilitiesNum != 0)
+            {
+                for (int i = 0; i < MaxAbilitiesNum; i++)
+                {
+                    CurrentAbilities.Add(null);
+                }
+
+                Ability[] l = GetComponents<Ability>();
+                
+                for (int i = 0; i < MaxAbilitiesNum; i++)
+                {
+                    if (i <= l.Length - 1)
+                    {
+                        switch (l[i].CurrentButtonType)
+                        {
+                            case AbilityButtonType.ForceLeft:
+                                if (CurrentAbilities[0] == null)
+                                {
+                                    CurrentAbilities.Insert(0, l[i]);
+                                    CurrentAbilities.RemoveAt(1);
+                                }
+                                else
+                                {
+                                    Debug.LogError("Ability type wrong: 2 ForceLeft exist.");
+                                }
+                                break;
+                            case AbilityButtonType.ForceMiddle:
+                                if (CurrentAbilities[1] == null)
+                                {
+                                    CurrentAbilities.Insert(1, l[i]);
+                                    CurrentAbilities.RemoveAt(2);
+                                }
+                                else
+                                {
+                                    Debug.LogError("Ability type wrong: 2 ForceMiddle exist.");
+                                }
+                                break;
+                            case AbilityButtonType.ForceRight:
+                                if (CurrentAbilities[2] == null)
+                                {
+                                    CurrentAbilities.Insert(2, l[i]);
+                                    CurrentAbilities.RemoveAt(3);
+                                }
+                                else
+                                {
+                                    Debug.LogError("Ability type wrong: 2 ForceRight exist.");
+                                }
+                                break;
+                            case AbilityButtonType.NoLimit:
+                                for (int j = 0; j < MaxAbilitiesNum; j++)
+                                {
+                                    if (CurrentAbilities[j] == null)
+                                    {
+                                        CurrentAbilities.Insert(j, l[i]);
+                                        CurrentAbilities.RemoveAt(j + 1);
+                                    }
+                                    else
+                                    {
+                                        Debug.LogError("Ability type wrong: No spaces for abilities.");
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                }
+            }
         }
         
         /// <summary>
@@ -109,9 +180,7 @@ namespace _Ocean.Scripts.Player
         {
             if (_isReturning)
             {
-                _movement = new Vector3(0, 0, 0);
-                _currentMovement = new Vector3(0, 0, 0);
-                _newPosition = new Vector3(0, 0, 0);
+                _direction = new Vector3(0, 0, 0);
             }
             else
             {
@@ -127,19 +196,17 @@ namespace _Ocean.Scripts.Player
                 // if (Mathf.Abs(v.y) is > -1 and < 1) v.y = 0;
                 if (Mathf.Abs(v.z) is > -1 and < 1) v.z = 0;
                 
-                _movement = new Vector3(-v.z, 0, v.x);
-                // Debug.Log("movement:" + _movement);
-                _currentMovement = Vector3.Lerp(_currentMovement,_movement,Time.deltaTime * 1/MovementInertia);
-                _newPosition = transform.position + _currentMovement * MoveSpeed;
-                _newPosition = Vector3.Lerp(transform.position, _newPosition, Time.deltaTime);
-                if (ConstrainMovementToDeathBounds)
-                {
-                    _newPosition.x = Mathf.Clamp(_newPosition.x,_minBound_x,_maxBound_x);
-                    _newPosition.z = Mathf.Clamp(_newPosition.z,_minBound_z,_maxBound_z);
-                }
+                _direction = new Vector3(-v.z, 0, v.x);
+                // Debug.Log("direction: " + _direction);
                 
-                transform.position = _newPosition;
-
+                _rigidbody.AddForce(_direction * MoveForce);
+                
+                _rigidbody.velocity = new Vector3(
+                        Mathf.Clamp(_rigidbody.velocity.x,-MaxSpeed, MaxSpeed),
+                        Mathf.Clamp(_rigidbody.velocity.y, -MaxSpeed, MaxSpeed),
+                        Mathf.Clamp(_rigidbody.velocity.z, -MaxSpeed, MaxSpeed));
+                _rigidbody.angularVelocity = new Vector3(0, 0, 0);
+                
             }
         }
 
@@ -209,6 +276,88 @@ namespace _Ocean.Scripts.Player
             _isReturning = true;
             _canReturn = false;
         }
+
+        public override void Ability1ButtonDown()
+        {
+            base.Ability1ButtonDown();
+            if (CurrentAbilities[0] != null)
+            {
+                CurrentAbilities[0].AbilityButtonDown();
+            }
+        }
+        
+        public override void Ability1ButtonUp()
+        {
+            base.Ability1ButtonUp();
+            if (CurrentAbilities[0] != null)
+            {
+                CurrentAbilities[0].AbilityButtonUp();
+            }
+        }
+        
+        public override void Ability1ButtonPressed()
+        {
+            base.Ability1ButtonPressed();
+            if (CurrentAbilities[0] != null)
+            {
+                CurrentAbilities[0].AbilityButtonPressed();
+            }
+        }
+        
+        public override void Ability2ButtonDown()
+        {
+            base.Ability2ButtonDown();
+            if (CurrentAbilities[1] != null)
+            {
+                CurrentAbilities[1].AbilityButtonDown();
+            }
+        }
+        
+        public override void Ability2ButtonUp()
+        {
+            base.Ability2ButtonUp();
+            if (CurrentAbilities[1] != null)
+            {
+                CurrentAbilities[1].AbilityButtonUp();
+            }
+        }
+        
+        public override void Ability2ButtonPressed()
+        {
+            base.Ability2ButtonPressed();
+            if (CurrentAbilities[1] != null)
+            {
+                CurrentAbilities[1].AbilityButtonPressed();
+            }
+        }
+        
+        public override void Ability3ButtonDown()
+        {
+            base.Ability3ButtonDown();
+            if (CurrentAbilities[2] != null)
+            {
+                CurrentAbilities[2].AbilityButtonDown();
+            }
+        }
+        
+        public override void Ability3ButtonUp()
+        {
+            base.Ability3ButtonUp();
+            if (CurrentAbilities[2] != null)
+            {
+                CurrentAbilities[2].AbilityButtonUp();
+            }
+        }
+        
+        public override void Ability3ButtonPressed()
+        {
+            base.Ability3ButtonPressed();
+            if (CurrentAbilities[2] != null)
+            {
+                CurrentAbilities[2].AbilityButtonPressed();
+            }
+        }
+        
     }
 }
 

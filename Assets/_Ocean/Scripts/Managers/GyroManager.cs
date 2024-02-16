@@ -105,7 +105,6 @@ namespace _Ocean.Scripts.Managers
             return Input.gyro.rotationRateUnbiased;
         }
         
-        //获取到旋转的正确数值
         public Vector3 GetInspectorRotationValueMethod(Transform transform)
         {
             // 获取原生值
