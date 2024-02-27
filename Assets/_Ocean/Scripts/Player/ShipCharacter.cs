@@ -18,7 +18,7 @@ namespace _Ocean.Scripts.Player
         /// the movement inertia (the higher it is, the longer it takes for it to stop / change direction
         public float MovementDrag = 1f;
         [Range(0f, 120f)]
-        public float XMovementLimit = 10f;
+        public float XMovementLimit = 10f; // 角度10度
         [Range(0f, 120f)]
         public float YMovementLimit = 10f;
         [Range(0f, 120f)]
@@ -29,7 +29,7 @@ namespace _Ocean.Scripts.Player
         public float ReturnTime = 1.5f;
         public float ReturnCoolDownTime = 2f;
         [Range(0f, 120f)]
-        public float XRotationLimit = 30f;
+        public float XRotationLimit = 30f; // 船可以旋转多少度
         [Range(0f, 120f)]
         public float YRotationLimit = 30f;
         [Range(0f, 120f)]
